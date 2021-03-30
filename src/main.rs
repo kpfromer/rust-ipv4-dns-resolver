@@ -85,25 +85,29 @@ fn main() -> Result<()> {
 
     let requester_handles: Vec<JoinHandle<_>> = (0..num_requester)
         .into_iter()
-        .map(|_| {
+        .map(|thread_id| {
             let input_files = Arc::clone(&input_files);
             let shared = Arc::clone(&shared);
             let writer = Arc::clone(&serviced_writer);
 
             thread::spawn(move || {
-                producer::producer(input_files, shared, writer).unwrap();
+                let serviced_files = producer::producer(input_files, shared, writer).unwrap();
+
+                threadprintln!("thread {} serviced {} files", thread_id + 1, serviced_files);
             })
         })
         .collect();
 
     let resolver_handles: Vec<JoinHandle<_>> = (0..num_resolver)
         .into_iter()
-        .map(|_| {
+        .map(|thread_id| {
             let shared = Arc::clone(&shared);
             let writer = Arc::clone(&resolved_writer);
 
             thread::spawn(move || {
-                consumer::consumer(shared, writer).unwrap();
+                let resolved = consumer::consumer(shared, writer).unwrap();
+
+                threadprintln!("thread {} resolved {} hostnames", thread_id + 1, resolved);
             })
         })
         .collect();
@@ -120,7 +124,7 @@ fn main() -> Result<()> {
     let diff = end_time - start_time;
 
     println!(
-        "Time to run: {} seconds",
+        "total time is {} seconds",
         diff.num_milliseconds() as f64 / 1000.0
     );
 

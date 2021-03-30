@@ -21,7 +21,9 @@ pub fn producer(
     files: Arc<Mutex<Vec<PathBuf>>>,
     shared: Arc<SharedBuffer<String>>,
     log_file: Arc<Mutex<File>>,
-) -> Result<()> {
+) -> Result<u32> {
+    let mut serviced: u32 = 0;
+
     // Say we are starting
     {
         let mut buffer = shared.buffer.lock().unwrap();
@@ -32,6 +34,8 @@ pub fn producer(
         let mut input_files = files.lock().unwrap();
         (*input_files).pop()
     } {
+        serviced += 1;
+
         if let Ok(lines) = read_lines(file) {
             for line in lines {
                 if let Ok(hostname) = line {
@@ -72,5 +76,5 @@ pub fn producer(
         shared.can_consume.notify_all();
     }
 
-    Ok(())
+    Ok(serviced)
 }
