@@ -64,7 +64,7 @@ struct Cli {
     resolver_log_file: PathBuf,
 
     #[structopt(parse(from_os_str), required = true, max_values = MAX_INPUT_FILES as u64)]
-    output: Vec<PathBuf>,
+    input: Vec<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -73,10 +73,10 @@ fn main() -> Result<()> {
         num_resolver,
         requester_log_file,
         resolver_log_file,
-        output,
+        input,
     } = Cli::from_args();
 
-    let input_files = Arc::new(Mutex::new(output));
+    let input_files = Arc::new(Mutex::new(input));
     let shared = Arc::new(SharedBuffer::new());
     let serviced_writer = Arc::new(Mutex::new(File::create(requester_log_file)?));
     let resolved_writer = Arc::new(Mutex::new(File::create(resolver_log_file)?));

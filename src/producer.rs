@@ -1,7 +1,7 @@
 use crate::SharedBuffer;
 use anyhow::{Context, Result};
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, BufRead, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -17,6 +17,15 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+fn get_files_in_directory<P>(directory: P) -> Result<Vec<PathBuf>>
+where
+    P: AsRef<Path>,
+{
+    Ok(fs::read_dir(directory)?
+        .filter_map(|entry| entry.map(|file| file.path()).ok())
+        .collect::<Vec<_>>())
+}
+
 pub fn producer(
     files: Arc<Mutex<Vec<PathBuf>>>,
     shared: Arc<SharedBuffer<String>>,
@@ -30,10 +39,30 @@ pub fn producer(
         buffer.running_producers += 1;
     }
 
-    while let Some(file) = {
+    while let Some(mut file) = {
         let mut input_files = files.lock().unwrap();
         (*input_files).pop()
     } {
+        file = if file.is_dir() {
+            let mut files_under_dir = get_files_in_directory(file)?;
+            let current_file = files_under_dir.pop();
+
+            // If there are files then use the one on top and add the rest to the shared files vector
+            if let Some(current_file) = current_file {
+                // Loop through, and try to acquire lock and push file on shared files vector
+                for new_file in files_under_dir {
+                    let mut files = files.lock().unwrap();
+                    files.push(new_file);
+                }
+                current_file
+            } else {
+                // Otherwise there are no files and we will continue looking in the shared files vector
+                continue;
+            }
+        } else {
+            file
+        };
+
         serviced += 1;
 
         if let Ok(lines) = read_lines(file) {
