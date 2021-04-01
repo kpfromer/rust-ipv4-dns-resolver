@@ -35,6 +35,7 @@ pub fn consumer(shared: Arc<SharedBuffer<String>>, log_file: Arc<Mutex<File>>) -
                     _ => false,
                 }) {
                     // threadprintln!("Hostname: {} - ip: {}", hostname, ip.to_string());
+                    resolved += 1;
 
                     let out = format!("{}, {}\n", hostname, ip.to_string()).into_bytes();
                     let mut file = log_file.lock().unwrap();
@@ -47,7 +48,6 @@ pub fn consumer(shared: Arc<SharedBuffer<String>>, log_file: Arc<Mutex<File>>) -
                 let mut file = log_file.lock().unwrap();
                 file.write_all(&out)?;
             }
-            resolved += 1;
         }
     }
 }
